@@ -1,5 +1,7 @@
 import image_captioning.coco as coco
 import image_captioning.vgg16 as vgg16
+from image_captioning.tokenizer import *
+from image_captioning.utils import *
 
 import keras
 import matplotlib.pyplot as plt
@@ -52,6 +54,29 @@ def show_image(idx, train):
 
 show_image(idx=25, train=True)
 
+# Tokenizer
+marker_start = 'ssss '
+marker_end = ' eeee'
+NUM_WORDS = 15000
+
+print('Marking training and val captions with \'{}\' and \'{}\'\n'.format(marker_start, marker_end))
+train_captions_marked = mark_captions(captions_list=train_captions, mark_start=marker_start, mark_end=marker_end)
+val_captions_marked = mark_captions(captions_list=val_captions, mark_start=marker_start, mark_end=marker_end)
+
+train_captions_flat = flatten_captions(captions_list=train_captions_marked)
+val_captions_flat = flatten_captions(captions_list=val_captions_marked)
+
+tokenizer = TokenizerWrapper(
+    texts=train_captions_flat,
+    num_words=NUM_WORDS
+)
+
+train_tokens = tokenizer.captions_to_tokens(captions_list=train_captions_marked)
+val_tokens = tokenizer.captions_to_tokens(captions_list=val_captions_marked)
+
+print('Captions marked : {}'.format(print_list(train_captions_marked[0])))
+print('Tokens of above marked captions : {}'.format(print_list(train_tokens[0])))
+
 # Process the pre-trained VGG16 model
 vgg16_model = keras.applications.vgg16.VGG16(
     weights='imagenet'
@@ -73,6 +98,6 @@ transfer_values_train = vgg16.process_images(transfer_model, train_filenames, tr
 print("dtype:", transfer_values_train.dtype)
 print("shape:", transfer_values_train.shape)
 
-transfer_values_train = vgg16.process_images(transfer_model, train_filenames, train=False)
+transfer_values_train = vgg16.process_images(transfer_model, val_filenames, train=False)
 print("dtype:", transfer_values_train.dtype)
 print("shape:", transfer_values_train.shape)

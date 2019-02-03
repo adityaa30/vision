@@ -2,8 +2,6 @@ import os
 import zipfile
 import tarfile
 
-import tensorflow as tf
-
 
 def extract(filename, download_dir):
     """

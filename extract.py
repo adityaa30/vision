@@ -29,12 +29,3 @@ def extract(filename, download_dir):
         tarfile.open(name=file_path, mode='r:gz').extractall(download_dir)
 
     print('Extraction successfully complete')
-
-
-DATA_URL = 'http://download.tensorflow.org/models/inception_resnet_v2_2016_08_30.tar.gz'
-FILE_NAME = 'inception_resnet_v2_2016_08_30.tar.gz'
-DATA_DIRECTORY = 'inception-resent-v2-model/'
-
-if __name__ == '__main__':
-    print(tf.__version__)
-    extract(filename='inception_v3_2016_08_28.tar.gz', download_dir='inception-v3/')

@@ -1,5 +1,6 @@
 import pickle
 import os
+import sys
 
 
 def print_list(list):
@@ -91,3 +92,20 @@ def cache(cache_path, fn, *args, **kwargs):
         print("- Data saved to cache-file: " + cache_path)
 
     return obj
+
+
+def create_caption_filename_list(filenames, captions):
+    """
+    Creates a list of length = total number of captions where every list item
+    is a list of size 2 -> [corresponding filepath path, caption]
+
+    :param filenames: List of file-paths for images
+    :param captions: List of list of captions (tokenize or not) for each filename
+    """
+    assert len(captions) == len(filenames)
+    dataset = []
+    for i, caption in enumerate(captions, start=0):
+        for cap in caption:
+            dataset.append([filenames[i], cap])
+
+    return dataset

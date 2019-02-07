@@ -9,6 +9,11 @@ from tensorflow.python.keras import backend as K
 class ImageProcess:
     def __init__(self, model, transfer_layer, batch_size, name):
         """
+        ImageProcess is a helper class to process images under the hood
+        to calculate the transfer-values for any model provided using Keras
+        and TensorFlow APIs to support parallel-processing the images in a
+        batch
+
         :param model: Model to calculate the transfer-values
         :param transfer_layer:
         :param batch_size:

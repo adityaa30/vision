@@ -1,13 +1,11 @@
 import image_captioning.coco as coco
-import image_captioning.vgg16 as vgg16
+from image_captioning.models.models import VGG16
 from image_captioning.tokenizer import *
 from image_captioning.glove import GloVe
 from image_captioning.utils import *
 
 import random
-import tensorflow as tf
 import keras
-from tensorflow.python.keras import backend as K
 import numpy as np
 import matplotlib.pyplot as plt
 import os
@@ -83,42 +81,11 @@ tokenizer = TokenizerWrapper(
     texts=train_captions_flat,
 )
 
-# Use pre-trained embedding layer GloVe and fine-tune it
-glove = GloVe(tokenizer)
-
 train_tokens = tokenizer.captions_to_tokens(captions_list=train_captions_marked)
 val_tokens = tokenizer.captions_to_tokens(captions_list=val_captions_marked)
 
 print('Captions marked : {}'.format(print_list(train_captions_marked[0])))
 print('Tokens of above marked captions : {}'.format(print_list(train_tokens[0])))
-
-# Process the pre-trained VGG16 model
-vgg16_model = keras.applications.vgg16.VGG16(
-    weights='imagenet'
-)
-assert isinstance(vgg16_model, keras.models.Model)
-
-vgg16_model.summary()
-
-layers = vgg16_model.layers
-print('Number of layers in VGG16 : {}'.format(len(layers)))
-
-transfer_layer = vgg16_model.get_layer('fc2')
-transfer_values_size = K.int_shape(transfer_layer.output)[1]
-transfer_model = keras.models.Model(
-    inputs=vgg16_model.input,
-    outputs=transfer_layer.output
-)
-
-transfer_values_train = vgg16.process_images(transfer_model, train_filenames, train=True)
-print('\nTransfer values train : ')
-print("dtype:", transfer_values_train.dtype)
-print("shape:", transfer_values_train.shape)
-
-transfer_values_val = vgg16.process_images(transfer_model, val_filenames, train=False)
-print('\nTransfer values cross-validation : ')
-print("dtype:", transfer_values_val.dtype)
-print("shape:", transfer_values_val.shape)
 
 
 def get_random_captions_tokens(indexs):
@@ -139,9 +106,19 @@ def get_random_captions_tokens(indexs):
     return token_sequences
 
 
+# Use pre-trained embedding layer GloVe and fine-tune it
+glove = GloVe(tokenizer)
+
+# Process the pre-trained VGG16 model
+vgg16 = VGG16(
+    batch_size=16,
+    train_filenames=train_filenames,
+    val_filenames=val_filenames
+)
+
 # GRU network
 
-transfer_values_input = keras.layers.Input(shape=(transfer_values_size,))
+transfer_values_input = keras.layers.Input(shape=(vgg16.image_process.transfer_values_size,))
 decoder_transfer_map = keras.layers.Dense(
     units=STATE_SIZE,
     activation='tanh',

@@ -23,7 +23,7 @@ class GloVe:
         assert isinstance(tokenizer, TokenizerWrapper) and tokenizer.index_word is not None
         self.embedding_dimension = 300
         self.threshold_value = 3
-        self.glove_vectors = None  # finally it will  be converted to a DataFrame containing all the GloVe vectors
+        self.embedding_matrix = None
 
         if os.path.exists(self.PATH_EMBEDDING_MATRIX):
             print('\nLoading pre-processed embedding matrix from {}'.format(self.embedding_matrix))
@@ -34,6 +34,7 @@ class GloVe:
         else:
             print('\nProcessing glove vectors to create embedding matrix.')
             # self.process_glove(self.DATASET_DIR, 300)
+            self.glove_vectors = None  # finally it will  be converted to a DataFrame containing all the GloVe vectors
             self.load_glove_vectors()
             self.num_words = self.glove_vectors.shape[0]
             self.embedding_matrix = np.random.rand(
@@ -91,13 +92,6 @@ class GloVe:
 
     def load_glove_vectors(self):
         print('Loading glove word vectors..')
-
-        # with open(self.PATH_GLOVE_MATRIX, encoding='utf8') as f:
-        #     for line in f:
-        #         values = line.split()
-        #         word = values[0]
-        #         coefficients = np.asarray(values[1:], dtype='float32')
-        #         self.glove_vectors[word] = coefficients
 
         self.glove_vectors = pd.read_table(
             self.PATH_GLOVE_MATRIX,
@@ -167,5 +161,4 @@ class GloVe:
 
 # Testing purpose only
 if __name__ == '__main__':
-
-    globe = GloVe(1)
+    pass

@@ -1,3 +1,7 @@
+import pickle
+import os
+
+
 def print_list(list):
     """
     Displays each element of the list in separate line
@@ -42,3 +46,48 @@ def flatten_captions(captions_list):
     ]
 
     return captions_list
+
+
+def print_progress(count, max_count):
+    percentage_complete = count / max_count
+
+    # Status-message
+    # \r which means the line should overwrite itself
+    msg = "\r- Progress: {}".format(percentage_complete)
+
+    sys.stdout.write(msg)
+    sys.stdout.flush()
+
+
+def cache(cache_path, fn, *args, **kwargs):
+    """
+    Cache-wrapper for a function or class. If the cache-file exists
+    then the data is reloaded and returned, otherwise the function
+    is called and the result is saved to cache. The fn-argument can
+    also be a class instead, in which case an object-instance is
+    created and saved to the cache-file.
+
+    :param cache_path: File-path for the cache-file.
+    :param fn: Function or class to be called.
+    :param args: Arguments to the function or class-init.
+    :param kwargs: Keyword arguments to the function or class-init.
+    :return: The result of calling the function or creating the object-instance.
+    """
+
+    if os.path.exists(cache_path):
+        # Cache-file exist
+        with open(cache_path, mode='rb') as file:
+            obj = pickle.load(file)
+        print("- Data loaded from cache-file: " + cache_path)
+    else:
+        # Cache-file does not exist
+
+        obj = fn(*args, **kwargs)
+
+        # Save data to a cache-file
+        with open(cache_path, mode='wb') as file:
+            pickle.dump(obj, file)
+
+        print("- Data saved to cache-file: " + cache_path)
+
+    return obj

@@ -76,29 +76,31 @@ val_captions_marked = mark_captions(captions_list=val_captions, mark_start=marke
 
 train_captions_flat = flatten_captions(captions_list=train_captions_marked)
 val_captions_flat = flatten_captions(captions_list=val_captions_marked)
+caption_flat = train_captions_flat + val_captions_flat
 
 tokenizer = TokenizerWrapper(
-    texts=train_captions_flat,
+    texts=caption_flat
 )
 
 train_tokens = tokenizer.captions_to_tokens(captions_list=train_captions_marked)
 val_tokens = tokenizer.captions_to_tokens(captions_list=val_captions_marked)
 
+# Testing marked captions and their respective tokens
 print('Captions marked : {}'.format(print_list(train_captions_marked[0])))
 print('Tokens of above marked captions : {}'.format(print_list(train_tokens[0])))
 
 
-def get_random_captions_tokens(indexs):
+def get_random_captions_tokens(index):
     """
     Generated a list of token sequences, each token sequence
     is selected randomly from the respective captions for
     a particular image
 
-    :param indexs: list of id's for a set of images
+    :param index: list of id's for a set of images
     :return: list of randomly selected token sequences
     """
     token_sequences = []
-    for index in indexs:
+    for index in index:
         token_index = np.random.choice(len(train_tokens[index]))
         token_sequence = train_tokens[index][token_index]
         token_sequences.append(token_sequence)
@@ -111,7 +113,7 @@ glove = GloVe(tokenizer)
 
 # Process the pre-trained VGG16 model
 vgg16 = VGG16(
-    batch_size=16,
+    batch_size=32,
     train_filenames=train_filenames,
     val_filenames=val_filenames
 )

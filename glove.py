@@ -28,7 +28,7 @@ class GloVe:
         if os.path.exists(self.PATH_EMBEDDING_MATRIX):
             print('\nLoading pre-processed embedding matrix from {}'.format(self.embedding_matrix))
             self.embedding_matrix = np.load(self.PATH_EMBEDDING_MATRIX)
-            self.num_words = self.embedding_matrix.shape[0]
+            self.num_words = self.tokenizer.num_words
             # self.glove_vectors = self.load_glove_vectors(self.DATASET_DIR, 300)
 
         else:
@@ -36,9 +36,9 @@ class GloVe:
             # self.process_glove(self.DATASET_DIR, 300)
             self.glove_vectors = None  # finally it will  be converted to a DataFrame containing all the GloVe vectors
             self.load_glove_vectors()
-            self.num_words = self.glove_vectors.shape[0]
+            self.num_words = self.tokenizer.num_words
             self.embedding_matrix = np.random.rand(
-                self.num_words,
+                self.num_words + 1,
                 self.embedding_dimension
             )
             self.prepare_embedding_matrix()
@@ -131,6 +131,7 @@ class GloVe:
             current_word = self.glove_vectors.iloc[index].name
             frequency = self.tokenizer.word_counts.get(current_word)
             if frequency is not None and frequency > self.threshold_value:
+                print(f'-Placed embedding of word \'{current_word}\' to \'{word}\'')
                 return self.get_glove_vector(current_word)
             else:
                 continue
@@ -154,6 +155,10 @@ class GloVe:
                 # words not found in the embedding index will be all random.
                 self.embedding_matrix[i] = embedding_vector
             print('Processed word : \'{}\'\t\ttoken id :{}'.format(word, i))
+
+            # Save the embedding matrix after each word is processed
+            if i % 1000 == 0:
+                np.save(self.PATH_EMBEDDING_MATRIX, self.embedding_matrix)
 
         np.save(self.PATH_EMBEDDING_MATRIX, self.embedding_matrix)
         print('Embedding matrix of shape {} prepared.'.format(self.embedding_matrix.shape))

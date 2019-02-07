@@ -3,12 +3,12 @@ import pandas as pd
 
 
 class TokenizerWrapper(Tokenizer):
-    def __init__(self, texts, num_words=None):
+    def __init__(self, texts):
         """
         :param texts: lists of strings in the data-set
         :param num_words: max number of words to user
         """
-        Tokenizer.__init__(self, num_words=num_words)
+        Tokenizer.__init__(self)
 
         self.fit_on_texts(texts)
         self.num_words = len(self.word_index.keys())

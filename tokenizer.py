@@ -1,4 +1,5 @@
 from keras_preprocessing.text import Tokenizer
+import pandas as pd
 
 
 class TokenizerWrapper(Tokenizer):
@@ -10,7 +11,8 @@ class TokenizerWrapper(Tokenizer):
         Tokenizer.__init__(self, num_words=num_words)
 
         self.fit_on_texts(texts)
-        self.vocab_reverse = dict(zip(self.word_index.values(), self.word_index.keys()))
+        self.num_words = len(self.word_index.keys())
+        self.word_counts_sorted = pd.DataFrame(sorted(self.word_counts.items(), key=lambda x: x[1], reverse=True))
 
     def token_to_word(self, token):
         """
@@ -20,7 +22,7 @@ class TokenizerWrapper(Tokenizer):
         :return: corresponding word of @token
         """
 
-        word = " " if token == 0 else self.vocab_reverse[token]
+        word = " " if token == 0 else self.index_word[token]
         return word
 
     def tokens_to_string(self, tokens):
@@ -32,7 +34,7 @@ class TokenizerWrapper(Tokenizer):
         :return: corresponding sentence of @tokens
         """
 
-        words = [self.vocab_reverse[token]
+        words = [self.index_word[token]
                  for token in tokens
                  if token != 0]
 

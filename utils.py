@@ -3,11 +3,14 @@ def print_list(list):
     Displays each element of the list in separate line
     :param list: 1D list containing elements
     """
+    output_string = ''
     for item in list:
-        print(item)
+        output_string += str(item) + '\n'
+
+    return output_string
 
 
-def mark_captions(captions_list, mark_start='ssss ', mark_end=' eeee'):
+def mark_captions(captions_list, mark_start='<SOS> ', mark_end=' <EOS>'):
     """
     Wraps all text-strings in the start[*]end markers.
 

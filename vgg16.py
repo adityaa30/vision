@@ -75,13 +75,13 @@ def process_images(transfer_model, filenames, train=True):
                   False if @filenames refer to cross-validation data
     :return: Transfer values
     """
-    print("Processing {0} images in training-set ...".format(len(filenames)))
+    print("\nProcessing {0} images in training-set ...".format(len(filenames)))
 
     if train:
-        cache_path = os.path.join(coco.DOWNLOAD_DIR, "transfer_values_train.pkl")
+        cache_path = os.path.join(coco.DOWNLOAD_DIR, "vgg16_transfer_values_train.pkl")
         data_dir = coco.TRAIN_DIR
     else:
-        cache_path = os.path.join(coco.DOWNLOAD_DIR, "transfer_values_val.pkl")
+        cache_path = os.path.join(coco.DOWNLOAD_DIR, "vgg16_transfer_values_val.pkl")
         data_dir = coco.VAL_DIR
 
     # If the cache-file already exists then reload it,

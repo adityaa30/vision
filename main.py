@@ -1,9 +1,10 @@
 import image_captioning.coco as coco
-from image_captioning.models.models import VGG16
+from image_captioning.models.models import VGG16, InceptionV3
 from image_captioning.tokenizer import *
 from image_captioning.glove import GloVe
 from image_captioning.utils import *
 from image_captioning.models.train import TrainModel, COCOSequenceGenerator
+from image_captioning.config import Config
 
 import random
 import keras
@@ -16,6 +17,9 @@ STATE_SIZE = 512
 BATCH_SIZE = 128
 PATH_TRAINED_WEIGHTS = 'trained_weights/model-1.ckpt'
 PATH_TENSORBOARD_LOGS = 'tensorboard/logs-1/'
+
+# Create instance for config file
+config = Config()
 
 # Extract the files
 coco.extract_files()
@@ -79,7 +83,8 @@ val_captions_flat = flatten_captions(captions_list=val_captions_marked)
 caption_flat = train_captions_flat + val_captions_flat
 
 tokenizer = TokenizerWrapper(
-    texts=caption_flat
+    texts=caption_flat,
+    config=config
 )
 print(f'Total words in vocab : {tokenizer.num_words}')
 
@@ -90,21 +95,22 @@ val_tokens = tokenizer.captions_to_tokens(captions_list=val_captions_marked)
 print('Captions marked : {}'.format(print_list(train_captions_marked[0])))
 print('Tokens of above marked captions : {}'.format(print_list(train_tokens[0])))
 
-# Create the dataset we'll be using to train
-# Dataset is a list with each item as a list of
-# type : [filename, caption (maybe tokenize)]
-train_dataset = create_caption_filename_list(filenames=train_filenames, captions=train_tokens)
-val_dataset = create_caption_filename_list(filenames=val_filenames, captions=val_tokens)
-
 # Use pre-trained embedding layer GloVe and fine-tune it
 glove = GloVe(tokenizer)
 
 # Process the pre-trained VGG16 model
 vgg16 = VGG16(
-    batch_size=32,
+    batch_size=48,
     train_filenames=train_filenames,
-    val_filenames=val_filenames
+    val_filenames=val_filenames,
+    config=config
 )
+
+# Create the dataset we'll be using to train
+# Dataset is a list with each item as a list of
+# type : [transfer-value, caption (maybe tokenize)]
+train_dataset = create_dataset_list(transfer_values=vgg16.transfer_values_train, captions=train_tokens)
+val_dataset = create_dataset_list(transfer_values=vgg16.transfer_values_val, captions=val_tokens)
 
 model = TrainModel(vgg16, glove, state_size=512)
 model.decoder_model.summary()
@@ -127,7 +133,6 @@ callback_tensorboard = keras.callbacks.TensorBoard(
     histogram_freq=1,
     write_graph=True,
     write_grads=True,
-    write_images=True
 )
 
 try:

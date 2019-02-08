@@ -1,13 +1,15 @@
 import numpy as np
+import bcolz
 import image_captioning.coco as coco
 from image_captioning.utils import *
+from image_captioning.config import Config
 
 import keras
 from tensorflow.python.keras import backend as K
 
 
 class ImageProcess:
-    def __init__(self, model, transfer_layer, batch_size, name):
+    def __init__(self, model, transfer_layer, batch_size, name, config):
         """
         ImageProcess is a helper class to process images under the hood
         to calculate the transfer-values for any model provided using Keras
@@ -15,13 +17,16 @@ class ImageProcess:
         batch
 
         :param model: Model to calculate the transfer-values
-        :param transfer_layer:
-        :param batch_size:
+        :param transfer_layer: string representing the output layer of transfer-model
+        :param batch_size: Batch size for processing the images in the transfer-model
+        :param config: Instance of Config class
         """
         assert isinstance(model, keras.models.Model)
+        assert isinstance(config, Config)
         self.model = model
         self.batch_size = batch_size
         self.model_name = name
+        self.config = config
 
         try:
             self.transfer_layer = model.get_layer(transfer_layer)
@@ -34,7 +39,7 @@ class ImageProcess:
         except ValueError as e:
             print(e)
 
-    def _process_images(self, data_dir, filenames):
+    def _process_images(self, data_dir, filenames, bcolz_dir):
         """
         Process all the given files in the given data_dir using the
         pre-trained image-model and return their transfer-values.
@@ -51,7 +56,7 @@ class ImageProcess:
 
         # Pre-allocate output-array for transfer-values
         shape = (num_images, self.transfer_values_size)
-        transfer_values = np.zeros(shape=shape, dtype=np.float64)
+        transfer_values = bcolz.carray(np.zeros(shape=shape, dtype=np.float64), rootdir=bcolz_dir, mode='w')
 
         start_index = 0
 
@@ -67,7 +72,7 @@ class ImageProcess:
             # Load all the images in the batch
             for i, filename in enumerate(filenames[start_index:end_index]):
                 path = os.path.join(data_dir, filename)
-                img = coco.load_image(path, size=self.image_size)  # TODO : dont include the depth of the image
+                img = coco.load_image(path, size=self.image_size[:2])
                 image_batch[i] = img
 
             # Use the pre-trained image-model to process the image
@@ -95,11 +100,19 @@ class ImageProcess:
         print("\nProcessing {0} images in training-set ...".format(len(filenames)))
 
         if train:
-            cache_path = os.path.join(coco.DOWNLOAD_DIR, f'{self.model_name}_transfer_values_train.pkl')
-            data_dir = coco.TRAIN_DIR
+            cache_path = os.path.join(self.config.paths.DATASET_DIR, f'{self.model_name}_transfer_values_train.pkl')
+            data_dir = self.config.paths.TRAIN_DIR
+            bcolz_dir = os.path.join(
+                self.config.paths.DATASET_DIR,
+                f'{self.model_name}_{self.config.paths.BCOLZ_TRAIN_TRANSFER_VALUES}'
+            )
         else:
-            cache_path = os.path.join(coco.DOWNLOAD_DIR, f'{self.model_name}_transfer_values_val.pkl')
-            data_dir = coco.VAL_DIR
+            cache_path = os.path.join(self.config.paths.DATASET_DIR, f'{self.model_name}_transfer_values_val.pkl')
+            data_dir = self.config.paths.VAL_DIR
+            bcolz_dir = os.path.join(
+                self.config.paths.DATASET_DIR,
+                f'{self.model_name}_{self.config.paths.BCOLZ_VAL_TRANSFER_VALUES}'
+            )
 
         # If the cache-file already exists then reload it,
         # otherwise process all images and save their transfer-values
@@ -108,7 +121,8 @@ class ImageProcess:
             cache_path=cache_path,
             fn=self._process_images,
             data_dir=data_dir,
-            filenames=filenames
+            filenames=filenames,
+            bcolz_dir=bcolz_dir
         )
 
         return transfer_values
@@ -122,7 +136,8 @@ if __name__ == '__main__':
     assert isinstance(vgg16_model, keras.models.Model)
 
     vgg16_model.summary()
+    config = Config()
 
     train_ids, train_filenames, train_captions = coco.load_records(train=True)
     val_ids, val_filenames, val_captions = coco.load_records(train=False)
-    image_process = ImageProcess(vgg16_model, 'fc2', 16, 'vgg16')
+    image_process = ImageProcess(vgg16_model, 'fc2', 16, 'vgg16', config)

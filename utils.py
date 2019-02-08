@@ -1,6 +1,9 @@
+from image_captioning.config import Config
+
 import pickle
 import os
 import sys
+import bcolz
 
 
 def print_list(list):
@@ -52,9 +55,7 @@ def flatten_captions(captions_list):
 def print_progress(count, max_count):
     percentage_complete = count / max_count
 
-    # Status-message
-    # \r which means the line should overwrite itself
-    msg = "\r- Progress: {}".format(percentage_complete)
+    msg = f'\n-Processed : {count}/{max_count}\tProgress: {percentage_complete}'
 
     sys.stdout.write(msg)
     sys.stdout.flush()
@@ -94,18 +95,26 @@ def cache(cache_path, fn, *args, **kwargs):
     return obj
 
 
-def create_caption_filename_list(filenames, captions):
+def create_dataset_list(transfer_values, captions, config, train=True):
     """
     Creates a list of length = total number of captions where every list item
     is a list of size 2 -> [corresponding filepath path, caption]
 
-    :param filenames: List of file-paths for images
-    :param captions: List of list of captions (tokenize or not) for each filename
+    :param transfer_values: List of transfer-values for images
+    :param captions: List of list of captions (tokenize) for each filename
+    :param config: Instance of Config class
+    :param train:
+            True if transfer-values and captions are of training dataset
+            False if transfer-values and captions are of cross-validation dataset
     """
-    assert len(captions) == len(filenames)
+    assert len(captions) == len(transfer_values)
     dataset = []
     for i, caption in enumerate(captions, start=0):
         for cap in caption:
-            dataset.append([filenames[i], cap])
+            dataset.append([transfer_values[i], cap])
 
-    return dataset
+    assert isinstance(config, Config)
+    if train:
+        return bcolz.carray(dataset, rootdir=config.paths.BCOLZ_TRAIN_DATASET, mode='w')
+    else:
+        return bcolz.carray(dataset, rootdir=config.paths.BCOLZ_VAL_DATASET, mode='w')

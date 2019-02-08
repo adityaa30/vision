@@ -1,15 +1,19 @@
 from keras_preprocessing.text import Tokenizer
 import pandas as pd
+import bcolz
+from image_captioning.config import Config
 
 
 class TokenizerWrapper(Tokenizer):
-    def __init__(self, texts):
+    def __init__(self, texts, config):
         """
         :param texts: lists of strings in the data-set
-        :param num_words: max number of words to user
+        :param config: Instance of Config class
         """
         Tokenizer.__init__(self)
+        assert isinstance(config, Config)
 
+        self.config = config
         self.fit_on_texts(texts)
         self.num_words = len(self.word_index.keys())
         self.word_counts_sorted = pd.DataFrame(sorted(self.word_counts.items(), key=lambda x: x[1], reverse=True))
@@ -41,15 +45,22 @@ class TokenizerWrapper(Tokenizer):
         text = " ".join(words)
         return text
 
-    def captions_to_tokens(self, captions_list):
+    def captions_to_tokens(self, captions_list, train=True):
         """
         Convert a @captions_list to
         a list-of-list of integer-tokens.
+
         :param captions_list: list of lists with text-captions
+        :param train:
+                True if captions are from training set
+                False if captions are from cross-validations set
         """
 
         # text_to_sequences() takes a list of texts
         tokens = [self.texts_to_sequences(captions)
                   for captions in captions_list]
 
-        return tokens
+        if train:
+            return bcolz.carray(tokens, rootdir=self.config.paths.BCOLZ_TRAIN_CAPTIONS, mode='w')
+        else:
+            return bcolz.carray(tokens, rootdir=self.config.paths.BCOLZ_VAL_CAPTIONS, mode='w')

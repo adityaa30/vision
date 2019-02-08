@@ -1,20 +1,22 @@
 from image_captioning.extract import extract
 from image_captioning.utils import *
+from image_captioning.config import Config
 
 import os
 import json
 from PIL import Image
 import numpy as np
 
+config = Config()
 DOWNLOAD_DIR = 'dataset/'
 
 TRAIN_DIR = DOWNLOAD_DIR + 'train2017/'
 VAL_DIR = DOWNLOAD_DIR + 'val2017/'
 
 FILES = [
-    ['train2017.zip', DOWNLOAD_DIR + 'train2017/'],
-    ['val2017.zip', DOWNLOAD_DIR + 'val2017/'],
-    ['annotations_trainval2017.zip', DOWNLOAD_DIR + 'annotations/']
+    ['train2017.zip', config.paths.DATASET_DIR + 'train2017/'],
+    ['val2017.zip', config.paths.DATASET_DIR + 'val2017/'],
+    ['annotations_trainval2017.zip', config.paths.DATASET_DIR + 'annotations/']
 ]
 
 
@@ -40,7 +42,7 @@ def _load_records(train=True):
         filename = "captions_val2017.json"
 
     # Load the data-file
-    path = os.path.join(DOWNLOAD_DIR, "annotations", filename)
+    path = os.path.join(config.paths.DATASET_DIR, "annotations", filename)
     with open(path, "r", encoding="utf-8") as file:
         data_raw = json.load(file)
 

@@ -146,8 +146,19 @@ num_captions_train = [len(captions) for captions in train_captions]
 total_num_captions_train = np.sum(num_captions_train)
 steps_per_epoch = int(total_num_captions_train / BATCH_SIZE)
 
+train_generator = COCOSequenceGenerator(
+    dataset=train_dataset,
+    config=config
+)
+
+val_generator = COCOSequenceGenerator(
+    dataset=val_dataset,
+    config=config
+)
+
 model.decoder_model.fit_generator(
-    # generator=,  # TODO : Complete and use COCOSequenceGenerator
+    generator=train_generator,
+    validation_data=val_generator,
     epochs=20,
     initial_epoch=0,
     steps_per_epoch=steps_per_epoch,

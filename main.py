@@ -1,10 +1,10 @@
-import image_captioning.coco as coco
-from image_captioning.models.models import VGG16, InceptionV3
-from image_captioning.tokenizer import *
-from image_captioning.glove import GloVe
-from image_captioning.utils import *
-from image_captioning.models.train import TrainModel, COCOSequenceGenerator
-from image_captioning.config import Config
+import coco as coco
+from models.models import VGG16, InceptionV3
+from tokenizer import *
+from glove import GloVe
+from utils import *
+from models.train import TrainModel, COCOSequenceGenerator
+from config import Config
 
 import random
 import keras
@@ -88,8 +88,8 @@ tokenizer = TokenizerWrapper(
 )
 print(f'Total words in vocab : {tokenizer.num_words}')
 
-train_tokens = tokenizer.captions_to_tokens(captions_list=train_captions_marked)
-val_tokens = tokenizer.captions_to_tokens(captions_list=val_captions_marked)
+train_tokens = tokenizer.captions_to_tokens(captions_list=train_captions_marked, train=True)
+val_tokens = tokenizer.captions_to_tokens(captions_list=val_captions_marked, train=False)
 
 # Testing marked captions and their respective tokens
 print('Captions marked : {}'.format(print_list(train_captions_marked[0])))
@@ -109,8 +109,8 @@ vgg16 = VGG16(
 # Create the dataset we'll be using to train
 # Dataset is a list with each item as a list of
 # type : [transfer-value, caption (maybe tokenize)]
-train_dataset = create_dataset_list(transfer_values=vgg16.transfer_values_train, captions=train_tokens)
-val_dataset = create_dataset_list(transfer_values=vgg16.transfer_values_val, captions=val_tokens)
+train_dataset = create_dataset_list(transfer_values=vgg16.transfer_values_train, captions=train_tokens, config=config)
+val_dataset = create_dataset_list(transfer_values=vgg16.transfer_values_val, captions=val_tokens, config=config)
 
 model = TrainModel(vgg16, glove, state_size=512)
 model.decoder_model.summary()

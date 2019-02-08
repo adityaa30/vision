@@ -1,4 +1,4 @@
-from image_captioning.config import Config
+from config import Config
 
 import pickle
 import os

@@ -1,5 +1,5 @@
 import keras
-from image_captioning.models.image_process import ImageProcess
+from models.image_process import ImageProcess
 
 
 class VGG16:

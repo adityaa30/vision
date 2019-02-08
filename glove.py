@@ -1,4 +1,4 @@
-from image_captioning.tokenizer import TokenizerWrapper
+from tokenizer import TokenizerWrapper
 
 import pickle
 import bcolz as bcolz

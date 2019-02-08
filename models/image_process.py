@@ -97,20 +97,20 @@ class ImageProcess:
                       False if @filenames refer to cross-validation data
         :return: Transfer values
         """
-        print("\nProcessing {0} images in training-set ...".format(len(filenames)))
+        print(f'\nProcessing {len(filenames)} images in training-set ...')
 
         if train:
-            cache_path = os.path.join(self.config.paths.DATASET_DIR, f'{self.model_name}_transfer_values_train.pkl')
+            cache_path = os.path.join(self.config.paths.BCOLZ_DIR, f'{self.model_name}_transfer_values_train.pkl')
             data_dir = self.config.paths.TRAIN_DIR
             bcolz_dir = os.path.join(
-                self.config.paths.DATASET_DIR,
+                self.config.paths.BCOLZ_DIR,
                 f'{self.model_name}_{self.config.paths.BCOLZ_TRAIN_TRANSFER_VALUES}'
             )
         else:
-            cache_path = os.path.join(self.config.paths.DATASET_DIR, f'{self.model_name}_transfer_values_val.pkl')
+            cache_path = os.path.join(self.config.paths.BCOLZ_DIR, f'{self.model_name}_transfer_values_val.pkl')
             data_dir = self.config.paths.VAL_DIR
             bcolz_dir = os.path.join(
-                self.config.paths.DATASET_DIR,
+                self.config.paths.BCOLZ_DIR,
                 f'{self.model_name}_{self.config.paths.BCOLZ_VAL_TRANSFER_VALUES}'
             )
 

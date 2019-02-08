@@ -14,9 +14,9 @@ TRAIN_DIR = DOWNLOAD_DIR + 'train2017/'
 VAL_DIR = DOWNLOAD_DIR + 'val2017/'
 
 FILES = [
-    ['train2017.zip', config.paths.DATASET_DIR + 'train2017/'],
-    ['val2017.zip', config.paths.DATASET_DIR + 'val2017/'],
-    ['annotations_trainval2017.zip', config.paths.DATASET_DIR + 'annotations/']
+    ['train2017.zip', config.paths.TRAIN_DIR],
+    ['val2017.zip', config.paths.VAL_DIR],
+    ['annotations_trainval2017.zip', config.paths.ANNOTATION_DIR]
 ]
 
 

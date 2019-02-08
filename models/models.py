@@ -32,10 +32,11 @@ class VGG16:
 
 
 class InceptionV3:
-    def __init__(self, train_filenames, val_filenames, batch_size):
+    def __init__(self, train_filenames, val_filenames, batch_size, config):
         self.batch_size = batch_size
         self.train_filenames = train_filenames
         self.val_filenames = val_filenames
+        self.config = config
 
         self.model = keras.applications.inception_v3.InceptionV3(weights='imagenet')
         self.model.summary()
@@ -44,7 +45,8 @@ class InceptionV3:
             model=self.model,
             transfer_layer='avg_pool',
             batch_size=self.batch_size,
-            name='inception_v3'
+            name='inception_v3',
+            config=self.config
         )
 
         self.transfer_values_train = self.image_process.process_images(train_filenames, train=True)

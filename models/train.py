@@ -1,10 +1,11 @@
 import keras
 import math
+from keras import backend as K
 
 
 class TrainModel:
-    def __init__(self, model, glove, state_size):
-        self.transfer_model = model
+    def __init__(self, transfer_model, glove, state_size):
+        self.transfer_model = transfer_model
         self.glove = glove
         self.state_size = state_size
 
@@ -17,37 +18,42 @@ class TrainModel:
 
         self.decoder_input = keras.layers.Input(shape=(None,), name='decoder_input')
 
-        self.decoder_embedding = keras.layers.Embedding(
-            input_dim=self.glove.num_words,
-            output_dim=self.glove.embedding_dimension,
-            weights=[self.glove.embedding_matrix],
-            trainable=True,
-            name='decoder_embedding'
-        )
+        with K.name_scope('embedding'):
+            self.decoder_embedding = keras.layers.Embedding(
+                input_dim=self.glove.num_words,
+                output_dim=self.glove.embedding_dimension,
+                weights=[self.glove.embedding_matrix],
+                trainable=False,
+                name='decoder_embedding'
+            )
 
-        self.decoder_gru1 = keras.layers.CuDNNGRU(
-            units=self.state_size,
-            return_sequences=True,
-            name='decoder_lstm1'
-        )
+        with K.name_scope('gru1'):
+            self.decoder_gru1 = keras.layers.CuDNNGRU(
+                units=self.state_size,
+                return_sequences=True,
+                name='decoder_gru1'
+            )
 
-        self.decoder_gru2 = keras.layers.CuDNNGRU(
-            units=self.state_size,
-            return_sequences=True,
-            name='decoder_lstm2'
-        )
+        with K.name_scope('gru2'):
+            self.decoder_gru2 = keras.layers.CuDNNGRU(
+                units=self.state_size,
+                return_sequences=True,
+                name='decoder_gru2'
+            )
 
-        self.decoder_gru3 = keras.layers.CuDNNGRU(
-            units=self.state_size,
-            return_sequences=True,
-            name='decoder_lstm3'
-        )
+        with K.name_scope('gru2'):
+            self.decoder_gru3 = keras.layers.CuDNNGRU(
+                units=self.state_size,
+                return_sequences=True,
+                name='decoder_gru3'
+            )
 
-        self.decoder_dense = keras.layers.Dense(
-            units=self.glove.num_words,
-            activation='linear',
-            name='decoder_output'
-        )
+        with K.name_scope('fc'):
+            self.decoder_dense = keras.layers.Dense(
+                units=self.glove.num_words,
+                activation='linear',
+                name='decoder_output'
+            )
 
         self.decoder_output = self.connect_decoder(transfer_values=self.transfer_values_input)
 

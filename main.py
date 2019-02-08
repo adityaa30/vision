@@ -81,6 +81,7 @@ caption_flat = train_captions_flat + val_captions_flat
 tokenizer = TokenizerWrapper(
     texts=caption_flat
 )
+print(f'Total words in vocab : {tokenizer.num_words}')
 
 train_tokens = tokenizer.captions_to_tokens(captions_list=train_captions_marked)
 val_tokens = tokenizer.captions_to_tokens(captions_list=val_captions_marked)
@@ -105,7 +106,9 @@ vgg16 = VGG16(
     val_filenames=val_filenames
 )
 
-model = TrainModel(vgg16)
+model = TrainModel(vgg16, glove, state_size=512)
+model.decoder_model.summary()
+
 model.decoder_model.compile(
     optimizer=keras.optimizers.RMSprop(),
     loss='sparse_categorical_crossentropy',

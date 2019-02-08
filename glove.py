@@ -26,7 +26,7 @@ class GloVe:
         self.embedding_matrix = None
 
         if os.path.exists(self.PATH_EMBEDDING_MATRIX):
-            print('\nLoading pre-processed embedding matrix from {}'.format(self.embedding_matrix))
+            print(f'\nLoading pre-processed embedding matrix from {self.PATH_EMBEDDING_MATRIX}')
             self.embedding_matrix = np.load(self.PATH_EMBEDDING_MATRIX)
             self.num_words = self.tokenizer.num_words
             # self.glove_vectors = self.load_glove_vectors(self.DATASET_DIR, 300)
@@ -38,7 +38,7 @@ class GloVe:
             self.load_glove_vectors()
             self.num_words = self.tokenizer.num_words
             self.embedding_matrix = np.random.rand(
-                self.num_words + 1,
+                self.num_words,
                 self.embedding_dimension
             )
             self.prepare_embedding_matrix()
@@ -153,7 +153,7 @@ class GloVe:
 
             if embedding_vector is not None:
                 # words not found in the embedding index will be all random.
-                self.embedding_matrix[i] = embedding_vector
+                self.embedding_matrix[i - 1] = embedding_vector
             print('Processed word : \'{}\'\t\ttoken id :{}'.format(word, i))
 
             # Save the embedding matrix after each word is processed

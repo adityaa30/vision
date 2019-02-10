@@ -1,4 +1,4 @@
-from config import Config
+from image_captioning.config import Config
 
 import pickle
 import os
@@ -108,10 +108,13 @@ def create_dataset_list(transfer_values, captions, config, train=True):
             False if transfer-values and captions are of cross-validation dataset
     """
     assert len(captions) == len(transfer_values)
+    num_captions = len(captions)
     dataset = []
     for i, caption in enumerate(captions, start=0):
         for cap in caption:
             dataset.append([transfer_values[i], cap])
+        if i % 1000 == 0:
+            print(f'-Processed {i}/{num_captions}')
 
     assert isinstance(config, Config)
     if train:

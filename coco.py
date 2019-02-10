@@ -1,6 +1,6 @@
-from extract import extract
-from utils import *
-from config import Config
+from image_captioning.extract import extract
+from image_captioning.utils import *
+from image_captioning.config import Config
 
 import os
 import json

@@ -1,7 +1,7 @@
 from keras_preprocessing.text import Tokenizer
 import pandas as pd
 import bcolz
-from config import Config
+from image_captioning.config import Config
 
 
 class TokenizerWrapper(Tokenizer):

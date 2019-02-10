@@ -1,8 +1,8 @@
 import numpy as np
 import bcolz
-import coco as coco
-from utils import *
-from config import Config
+import image_captioning.coco as coco
+from image_captioning.utils import *
+from image_captioning.config import Config
 
 import keras
 from tensorflow.python.keras import backend as K

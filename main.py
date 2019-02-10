@@ -1,10 +1,10 @@
-import coco as coco
-from models.models import VGG16, InceptionV3
-from tokenizer import *
-from glove import GloVe
-from utils import *
-from models.train import TrainModel, COCOSequenceGenerator
-from config import Config
+import image_captioning.coco as coco
+from image_captioning.models.models import VGG16, InceptionV3
+from image_captioning.tokenizer import *
+from image_captioning.glove import GloVe
+from image_captioning.utils import *
+from image_captioning.models.train import TrainModel, COCOSequenceGenerator
+from image_captioning.config import Config
 
 import random
 import keras
@@ -110,7 +110,10 @@ vgg16 = VGG16(
 # Dataset is a list with each item as a list of
 # type : [transfer-value, caption (maybe tokenize)]
 train_dataset = create_dataset_list(transfer_values=vgg16.transfer_values_train, captions=train_tokens, config=config)
+print(f'Shape of Training dataset : {train_dataset.shape}')
+
 val_dataset = create_dataset_list(transfer_values=vgg16.transfer_values_val, captions=val_tokens, config=config)
+print(f'Shape of Cross-validation dataset : {val_dataset.shape}')
 
 model = TrainModel(vgg16, glove, state_size=512)
 model.decoder_model.summary()
@@ -142,8 +145,7 @@ except Exception as error:
     print('{}\n'.format(error))
 
 # Calculating steps per epoch
-num_captions_train = [len(captions) for captions in train_captions]
-total_num_captions_train = np.sum(num_captions_train)
+total_num_captions_train = len(train_dataset.shape[0])
 steps_per_epoch = int(total_num_captions_train / BATCH_SIZE)
 
 train_generator = COCOSequenceGenerator(
@@ -161,6 +163,7 @@ model.decoder_model.fit_generator(
     validation_data=val_generator,
     epochs=20,
     initial_epoch=0,
+    verbose=2,
     steps_per_epoch=steps_per_epoch,
     callbacks=[callback_model_checkpoint, callback_tensorboard]
 )

@@ -1,4 +1,4 @@
-from image_captioning.tokenizer import TokenizerWrapper
+from tokenizer import TokenizerWrapper
 
 import pickle
 import bcolz as bcolz
@@ -29,6 +29,7 @@ class GloVe:
             print(f'\nLoading pre-processed embedding matrix from {self.PATH_EMBEDDING_MATRIX}')
             self.embedding_matrix = np.load(self.PATH_EMBEDDING_MATRIX)
             self.num_words = self.tokenizer.num_words
+            print(f'Loaded embedded matrix of shape : {self.embedding_matrix.shape}')
             # self.glove_vectors = self.load_glove_vectors(self.DATASET_DIR, 300)
 
         else:

@@ -10,6 +10,9 @@ class Config:
         self.TRAIN_BATCH_SIZE = 32
         self.PADDING_FILL_VALUE = 0
 
+        self.MARKER_START = 'ssss '
+        self.MARKER_END = ' eeee'
+
     class PATHS:
         def __init__(self):
             self.DATASET_DIR = 'dataset'
@@ -17,6 +20,9 @@ class Config:
             self.TRAIN_DIR = os.path.join(self.DATASET_DIR, 'train2017')
             self.VAL_DIR = os.path.join(self.DATASET_DIR, 'val2017')
             self.ANNOTATION_DIR = os.path.join(self.DATASET_DIR, 'annotations')
+
+            self.TRAIN_DATASET = os.path.join(self.DATASET_DIR, 'train_transferred_dataset.pkl')
+            self.VAL_DATASET = os.path.join(self.DATASET_DIR, 'val_transferred_dataset.pkl')
 
             self.BCOLZ_DIR = os.path.join(self.DATASET_DIR, 'bcolz')
             self.BCOLZ_TRAIN_CAPTIONS = os.path.join(self.BCOLZ_DIR, 'train_captions')

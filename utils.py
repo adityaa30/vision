@@ -1,8 +1,9 @@
-from image_captioning.config import Config
+from config import Config
 
 import pickle
 import os
 import sys
+import numpy as np
 import bcolz
 
 
@@ -95,7 +96,7 @@ def cache(cache_path, fn, *args, **kwargs):
     return obj
 
 
-def create_dataset_list(transfer_values, captions, config, train=True):
+def create_dataset(transfer_values, captions, config, train=True):
     """
     Creates a list of length = total number of captions where every list item
     is a list of size 2 -> [corresponding filepath path, caption]
@@ -110,6 +111,8 @@ def create_dataset_list(transfer_values, captions, config, train=True):
     assert len(captions) == len(transfer_values)
     num_captions = len(captions)
     dataset = []
+    for i in range(num_captions):
+        dataset.append([[], []])
     for i, caption in enumerate(captions, start=0):
         for cap in caption:
             dataset.append([transfer_values[i], cap])

@@ -109,18 +109,27 @@ def create_dataset(transfer_values, captions, config, train=True):
             False if transfer-values and captions are of cross-validation dataset
     """
     assert len(captions) == len(transfer_values)
-    num_captions = len(captions)
-    dataset = []
-    for i in range(num_captions):
-        dataset.append([[], []])
-    for i, caption in enumerate(captions, start=0):
-        for cap in caption:
-            dataset.append([transfer_values[i], cap])
-        if i % 1000 == 0:
-            print(f'-Processed {i}/{num_captions}')
-
     assert isinstance(config, Config)
+
+    num_captions = len(captions)
+    num_captions_list = [len(caption) for caption in captions]
+    total_captions = np.sum(num_captions_list)
+
+    dataset = np.zeros((total_captions, 2))
     if train:
-        return bcolz.carray(dataset, rootdir=config.paths.BCOLZ_TRAIN_DATASET, mode='w')
+        dataset = bcolz.carray(dataset, rootdir=config.paths.BCOLZ_TRAIN_DATASET, mode='w')
     else:
-        return bcolz.carray(dataset, rootdir=config.paths.BCOLZ_VAL_DATASET, mode='w')
+        dataset = bcolz.carray(dataset, rootdir=config.paths.BCOLZ_VAL_DATASET, mode='w')
+
+    row_idx = 0  # Temporary variable to keep track of each row in the dataset
+    for i in range(num_captions):
+        for x in num_captions_list[i]:
+            dataset[row_idx] = [i, x]
+            row += 1
+
+    if train:
+        print(f'Train Dataset created of shape : {dataset.shape}')
+    else:
+        print(f'Train Dataset created of shape : {dataset.shape}')
+
+    return dataset

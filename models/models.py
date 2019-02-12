@@ -16,7 +16,6 @@ class VGG16:
             train_tokens,
             val_tokens,
             config,
-            load_transfer_value=False
     ):
         self.batch_size = batch_size
         self.train_filenames = train_filenames
@@ -24,7 +23,6 @@ class VGG16:
         self.train_tokens = train_tokens
         self.val_tokens = val_tokens
         self.config = config
-        self.load_transfer_value = load_transfer_value
 
         self.model = keras.applications.vgg16.VGG16(weights='imagenet')
         self.model.summary()
@@ -37,6 +35,12 @@ class VGG16:
             config=self.config
         )
 
+        self.transfer_values_train = None
+        self.load_train_transfer_values()
+
+        self.transfer_values_val = None
+        self.load_val_transfer_values()
+
         # Create the dataset we'll be using to train
         # Dataset is a list with each item as a list of
         # type : [transfer-value, caption (tokenize)]
@@ -45,9 +49,6 @@ class VGG16:
             print(
                 f'Loaded cached train dataset from {config.paths.TRAIN_DATASET} of shape : {self.train_dataset.shape}')
         else:
-            self.transfer_values_train = None
-            self.load_train_transfer_values()
-
             print('Creating train dataset : ')
             train_dataset = create_dataset(
                 transfer_values=self.transfer_values_train,
@@ -65,9 +66,6 @@ class VGG16:
             print(
                 f'Loaded cached train dataset from {config.paths.VAL_DATASET} of shape : {self.val_dataset.shape}')
         else:
-            self.transfer_values_val = None
-            self.load_val_transfer_values()
-
             print('Creating cross-validation dataset : ')
             val_dataset = create_dataset(
                 transfer_values=self.transfer_values_val,
@@ -79,13 +77,6 @@ class VGG16:
             self.val_dataset = bcolz.carray(val_dataset, rootdir=config.paths.BCOLZ_VAL_DATASET, mode='w')
             pickle.dump(val_dataset, config.paths.VAL_DATASET)
             print(f'Save Train dataset to {config.paths.VAL_DATASET}')
-
-        if self.load_transfer_value:
-            self.transfer_values_train = None
-            self.load_train_transfer_values()
-
-            self.transfer_values_val = None
-            self.load_val_transfer_values()
 
     def load_train_transfer_values(self):
         self.transfer_values_train = self.image_process.process_images(self.train_filenames, train=True)

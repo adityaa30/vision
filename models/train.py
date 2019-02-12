@@ -83,30 +83,49 @@ class TrainModel:
 
 class COCOSequenceGenerator(keras.utils.Sequence):
 
-    def __init__(self, dataset, config):
+    def __init__(self, model, config, train=True):
         """
         Constructor to initialize the values of the dataset
 
-        :param dataset: List of captions with their corresponding transfer_values (bcolz)
-        :param batch_size: Batch size
+        :param model: Model class from models/models.py to fetch dataset
         :param config: Instance of Config class
+        :param train:
+                True if dataset is used for Training data
+                False if dataset is used for Cross-validation data
         """
-        self.dataset = dataset
+        self.model = model
         self.batch_size = config.TRAIN_BATCH_SIZE
         self.config = config
 
+        if train:
+            self.dataset = self.model.train_dataset
+            self.transfer_values = self.model.transfer_values_train
+            self.captions = self.model.train_tokens
+        else:
+            self.dataset = self.model.val_dataset
+            self.transfer_values = self.model.transfer_values_val
+            self.captions = self.model.val_tokens
+
         # Shuffle the dataset
-        self.transfer_values = None
-        self.captions = None
+        self.transfer_values_idx = None
+        self.captions_idx = None
         self.shuffle_dataset()
 
     def __getitem__(self, idx):
         """
         Gets batch at position index
         """
-        batch_transfer_values = np.array(self.transfer_values[idx * self.batch_size:(idx + 1) * self.batch_size])
+        batch_transfer_values_idx = np.array(
+            self.transfer_values_idx[idx * self.batch_size:(idx + 1) * self.batch_size])
 
-        batch_captions = np.array(self.captions[idx * self.batch_size:(idx + 1) * self.batch_size])
+        batch_captions_idx = np.array(self.captions_idx[idx * self.batch_size:(idx + 1) * self.batch_size])
+
+        batch_transfer_values = np.array([])
+        batch_captions = np.array([])
+        for i, idx in enumerate(batch_transfer_values_idx, start=0):
+            batch_transfer_values = np.r_[batch_transfer_values, self.transfer_values[idx]]
+            batch_captions = np.r_[batch_captions, self.captions[idx][batch_captions_idx[i]]]
+
         batch_captions = itertools.zip_longest(batch_captions, fillvalue=self.config.PADDING_FILL_VALUE)
 
         decoder_input_data = batch_captions[:, 0:-1]
@@ -136,5 +155,5 @@ class COCOSequenceGenerator(keras.utils.Sequence):
 
     def shuffle_dataset(self):
         np.random.shuffle(self.dataset)
-        self.transfer_values = self.dataset[:, 0]
-        self.captions = self.dataset[:, 1]
+        self.transfer_values_idx = self.dataset[:, 0]
+        self.captions_idx = self.dataset[:, 1]

@@ -142,12 +142,12 @@ total_num_captions_train = len(vgg16.train_dataset.shape[0])
 steps_per_epoch = int(total_num_captions_train / BATCH_SIZE)
 
 train_generator = COCOSequenceGenerator(
-    dataset=vgg16.train_dataset,
+    model=vgg16,
     config=config
 )
 
 val_generator = COCOSequenceGenerator(
-    dataset=vgg16.val_dataset,
+    model=vgg16,
     config=config
 )
 

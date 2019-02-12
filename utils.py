@@ -115,7 +115,7 @@ def create_dataset(transfer_values, captions, config, train=True):
     num_captions_list = [len(caption) for caption in captions]
     total_captions = np.sum(num_captions_list)
 
-    dataset = np.zeros((total_captions, 2))
+    dataset = np.zeros((total_captions, 2), dtype=np.int64)
     if train:
         dataset = bcolz.carray(dataset, rootdir=config.paths.BCOLZ_TRAIN_DATASET, mode='w')
     else:

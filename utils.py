@@ -123,13 +123,13 @@ def create_dataset(transfer_values, captions, config, train=True):
 
     row_idx = 0  # Temporary variable to keep track of each row in the dataset
     for i in range(num_captions):
-        for x in num_captions_list[i]:
+        for x in range(num_captions_list[i]):
             dataset[row_idx] = [i, x]
-            row += 1
+            row_idx += 1
 
     if train:
         print(f'Train Dataset created of shape : {dataset.shape}')
     else:
-        print(f'Train Dataset created of shape : {dataset.shape}')
+        print(f'Cross-validation Dataset created of shape : {dataset.shape}')
 
     return dataset

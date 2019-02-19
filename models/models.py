@@ -45,7 +45,10 @@ class VGG16:
         # Dataset is a list with each item as a list of
         # type : [transfer-value, caption (tokenize)]
         if os.path.exists(config.paths.TRAIN_DATASET):
-            self.train_dataset = pickle.load(config.paths.TRAIN_DATASET)
+
+            with open(config.paths.TRAIN_DATASET, mode='rb') as file:
+                self.train_dataset = pickle.load(file)
+
             print(
                 f'Loaded cached train dataset from {config.paths.TRAIN_DATASET} of shape : {self.train_dataset.shape}')
         else:
@@ -58,14 +61,21 @@ class VGG16:
             print(f'Shape of Training dataset : {train_dataset.shape}')
 
             self.train_dataset = bcolz.carray(train_dataset, rootdir=config.paths.BCOLZ_TRAIN_DATASET, mode='w')
-            pickle.dump(train_dataset, config.paths.TRAIN_DATASET)
+
+            with open(config.paths.TRAIN_DATASET, mode='wb') as file:
+                pickle.dump(train_dataset, file)
+
             print(f'Save Train dataset to {config.paths.TRAIN_DATASET}')
 
         if os.path.exists(config.paths.VAL_DATASET):
-            self.val_dataset = pickle.load(config.paths.VAL_DATASET)
+
+            with open(config.paths.VAL_DATASET, mode='rb') as file:
+                self.val_dataset = pickle.load(file)
+
             print(
                 f'Loaded cached train dataset from {config.paths.VAL_DATASET} of shape : {self.val_dataset.shape}')
         else:
+
             print('Creating cross-validation dataset : ')
             val_dataset = create_dataset(
                 transfer_values=self.transfer_values_val,
@@ -75,7 +85,10 @@ class VGG16:
             print(f'Shape of Cross-validation dataset : {val_dataset.shape}')
 
             self.val_dataset = bcolz.carray(val_dataset, rootdir=config.paths.BCOLZ_VAL_DATASET, mode='w')
-            pickle.dump(val_dataset, config.paths.VAL_DATASET)
+
+            with open(config.paths.VAL_DATASET, mode='wb') as file:
+                pickle.dump(self.val_dataset, file)
+
             print(f'Save Train dataset to {config.paths.VAL_DATASET}')
 
     def load_train_transfer_values(self):

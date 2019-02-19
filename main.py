@@ -80,7 +80,7 @@ val_captions_marked = mark_captions(captions_list=val_captions, mark_start=marke
 
 train_captions_flat = flatten_captions(captions_list=train_captions_marked)
 val_captions_flat = flatten_captions(captions_list=val_captions_marked)
-caption_flat = train_captions_flat + val_captions_flat
+caption_flat = train_captions_flat + val_captions_flat  # Increaetse the size of the vocabulary
 
 tokenizer = TokenizerWrapper(
     texts=caption_flat,
@@ -138,7 +138,7 @@ except Exception as error:
     print('{}\n'.format(error))
 
 # Calculating steps per epoch
-total_num_captions_train = len(vgg16.train_dataset.shape[0])
+total_num_captions_train = vgg16.train_dataset.shape[0]
 steps_per_epoch = int(total_num_captions_train / BATCH_SIZE)
 
 train_generator = COCOSequenceGenerator(

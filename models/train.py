@@ -13,6 +13,7 @@ class TrainModel:
         self.state_size = state_size
 
         self.transfer_values_input = keras.layers.Input(shape=(self.transfer_model.image_process.transfer_values_size,))
+
         self.decoder_transfer_map = keras.layers.Dense(
             units=self.state_size,
             activation='tanh',
@@ -127,6 +128,7 @@ class COCOSequenceGenerator(keras.utils.Sequence):
             batch_captions = np.r_[batch_captions, self.captions[idx][batch_captions_idx[i]]]
 
         batch_captions = itertools.zip_longest(batch_captions, fillvalue=self.config.PADDING_FILL_VALUE)
+        batch_captions = list(zip(*batch_captions))
 
         decoder_input_data = batch_captions[:, 0:-1]
         decoder_output_data = batch_captions[:, 1:]

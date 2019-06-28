@@ -22,7 +22,9 @@ class GloVe:
         self.tokenizer = tokenizer
         assert isinstance(tokenizer, TokenizerWrapper) and tokenizer.index_word is not None
         self.embedding_dimension = 300
-        self.threshold_value = 3
+        
+        # Min frequency to accept the word in vocab
+        self.threshold_frequency = 3
         self.embedding_matrix = None
 
         if os.path.exists(self.PATH_EMBEDDING_MATRIX):

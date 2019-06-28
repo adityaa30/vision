@@ -4,7 +4,7 @@ from config import Config
 
 import os
 import json
-from PIL import Image
+import tensorflow as tf
 import numpy as np
 
 config = Config()
@@ -64,7 +64,7 @@ def _load_records(train=True):
 
     for ann in annotations:
         image_id = ann['image_id']
-        caption = ann['caption']
+        caption = '<start>' + ann['caption'] + '<end>'
 
         record = records[image_id]
         record['captions'].append(caption)
@@ -95,24 +95,38 @@ def load_records(train=True):
     return records
 
 
-def load_image(path, size=None):
-    """
-    Load the image from the given file-path and resize it
-    to the given size if not None.
-    """
+class COCODataset:
+    def __init__(self, batch_size=16, train_model='mobilenetv2'):
+        train_ids, train_filenames, train_captions = load_records(train=True)
+        val_ids, val_filenames, val_captions = load_records(train=False)
 
-    img = Image.open(path)
+        if train_model == 'mobilenetv2':
+            preprocess_fn = self.load_image_mobilenet
 
-    if size is not None:
-        img = img.resize(size=size, resample=Image.LANCZOS)
+        self.train_image_dataset = tf.data.Dataset.from_tensor_slices(train_filenames). \
+            map(preprocess_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE). \
+            batch(batch_size)
 
-    img = np.array(img)
+        self.val_image_dataset = tf.data.Dataset.from_tensor_slices(val_filenames). \
+            map(preprocess_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE). \
+            batch(batch_size)
 
-    # Scale image-pixels so they fall between 0.0 and 1.0
-    img = img / 255.0
+    @staticmethod
+    def load_image_mobilenet(path):
+        """
+        Load the image from the given file-path and resize it
+        to the size compatible with MobileNetV2
+        """
 
-    # Convert 2-dim gray-scale array to 3-dim RGB array
-    if len(img.shape) == 2:
-        img = np.repeat(img[:, :, np.newaxis], 3, axis=2)
+        img = tf.io.read_file(path)
+        img = tf.image.decode_jpeg(img, channels=3)
+        img = tf.image.resize(img, (224, 224))
+        img = tf.keras.applications.mobilenet_v2.preprocess_input(img)
+        return img, path
 
-    return img
+
+    def dataset(self, train=True):
+        if train:
+            return self.train_image_dataset
+        else:
+            return self.val_image_dataset

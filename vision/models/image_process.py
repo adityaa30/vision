@@ -4,8 +4,8 @@ import coco as coco
 from utils import *
 from config import Config
 
-import keras
-from tensorflow.python.keras import backend as K
+import tensorflow as tf
+from tensorflow.python.keras import backend as kb
 
 
 class ImageProcess:
@@ -21,7 +21,7 @@ class ImageProcess:
         :param batch_size: Batch size for processing the images in the transfer-model
         :param config: Instance of Config class
         """
-        assert isinstance(model, keras.models.Model)
+        assert isinstance(model, tf.keras.models.Model)
         assert isinstance(config, Config)
         self.model = model
         self.batch_size = batch_size
@@ -30,9 +30,9 @@ class ImageProcess:
 
         try:
             self.transfer_layer = model.get_layer(transfer_layer)
-            self.transfer_values_size = K.int_shape(self.transfer_layer.output)[1]
-            self.image_size = K.int_shape(self.model.inputs[0])[1:]
-            self.transfer_model = keras.models.Model(
+            self.transfer_values_size = kb.int_shape(self.transfer_layer.output)[1]
+            self.image_size = kb.int_shape(self.model.inputs[0])[1:]
+            self.transfer_model = tf.keras.models.Model(
                 inputs=self.model.inputs,
                 outputs=self.transfer_layer.output
             )
@@ -130,10 +130,10 @@ class ImageProcess:
 
 if __name__ == '__main__':
     # Process the pre-trained VGG16 model
-    vgg16_model = keras.applications.vgg16.VGG16(
+    vgg16_model = tf.keras.applications.vgg16.VGG16(
         weights='imagenet'
     )
-    assert isinstance(vgg16_model, keras.models.Model)
+    assert isinstance(vgg16_model, tf.keras.models.Model)
 
     vgg16_model.summary()
     config = Config()

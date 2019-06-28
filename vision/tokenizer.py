@@ -1,66 +1,37 @@
-from keras_preprocessing.text import Tokenizer
+import tensorflow as tf
 import pandas as pd
-import bcolz
 from config import Config
 
 
-class TokenizerWrapper(Tokenizer):
-    def __init__(self, texts, config):
+class TokenizerWrapper(tf.keras.preprocessing.text.Tokenizer):
+    UNK = '<unk>'
+    START = '<start>'
+    END = '<end>'
+    PAD = '<pad>'
+
+    def __init__(self, texts, top=10000):
         """
         :param texts: lists of strings in the data-set
-        :param config: Instance of Config class
         """
-        Tokenizer.__init__(self)
-        assert isinstance(config, Config)
+        super().__init__(self, num_words=top, oov_token=self.UNK,
+                         filters='!"#$%&()*+.,-/:;=?@[\]^_`{|}~ ')
 
-        self.config = config
         self.fit_on_texts(texts)
-        self.num_words = len(self.word_index.keys())
-        self.word_counts_sorted = pd.DataFrame(sorted(self.word_counts.items(), key=lambda x: x[1], reverse=True))
+        self.word_index[self.PAD] = 0
+        self.index_word[0] = self.PAD
 
-    def token_to_word(self, token):
+    @staticmethod
+    def calc_max_length(tensor):
+        # Find the maximum length of any caption in our dataset
+        return max(len(t) for t in tensor)
+
+    def get_padded_sequences(self, texts):
         """
-        Look-up a single word from @token
-
-        :param token: Integer token of a word
-        :return: corresponding word of @token
+        Converts the given texts into their respective sequences.
+        All the sequences are furthure padded
         """
+        seqs = self.texts_to_sequences(texts)
+        pad_seqs = tf.keras.preprocessing.sequence.pad_sequences(
+            seqs, padding='post')
 
-        word = " " if token == 0 else self.index_word[token]
-        return word
-
-    def tokens_to_string(self, tokens):
-        """
-        Convert the given list of tokens into the respective
-        sentence
-
-        :param tokens: list of integer token (of a word)
-        :return: corresponding sentence of @tokens
-        """
-
-        words = [self.index_word[token]
-                 for token in tokens
-                 if token != 0]
-
-        text = " ".join(words)
-        return text
-
-    def captions_to_tokens(self, captions_list, train=True):
-        """
-        Convert a @captions_list to
-        a list-of-list of integer-tokens.
-
-        :param captions_list: list of lists with text-captions
-        :param train:
-                True if captions are from training set
-                False if captions are from cross-validations set
-        """
-
-        # text_to_sequences() takes a list of texts
-        tokens = [self.texts_to_sequences(captions)
-                  for captions in captions_list]
-
-        if train:
-            return bcolz.carray(tokens, rootdir=self.config.paths.BCOLZ_TRAIN_CAPTIONS, mode='w')
-        else:
-            return bcolz.carray(tokens, rootdir=self.config.paths.BCOLZ_VAL_CAPTIONS, mode='w')
+        max_length = self.calc_max_length(pad_seqs)

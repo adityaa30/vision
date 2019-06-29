@@ -18,6 +18,9 @@ class MobileNetV2:
         self._model = tf.keras.applications.mobilenet_v2.MobileNetV2(
             include_top=False, weights='imagenet')
 
+        self.input_shape = (224, 224, 3)
+        self.output_shape = (7, 7, 1280)
+
         self.transfer_model = tf.keras.Model(
             self._model.input,
             self._model.layers[-1].output
@@ -48,3 +51,4 @@ class MobileNetV2:
                 np.save(path_of_feature, bf.numpy())
 
         self.LOGGER.v('Finished decoding transfer values')
+    

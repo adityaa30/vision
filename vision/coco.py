@@ -1,33 +1,43 @@
-from extract import extract
-from utils import *
-from config import Config
-
 import os
 import json
 import tensorflow as tf
 import numpy as np
 
-config = Config()
-DOWNLOAD_DIR = 'dataset/'
+from sklearn.utils import shuffle
 
-TRAIN_DIR = DOWNLOAD_DIR + 'train2017/'
-VAL_DIR = DOWNLOAD_DIR + 'val2017/'
+from vision.extract import extract
+from vision.utils.utils import cache
+
+
+class PATHS:
+    DATASET_DIR = 'dataset'
+
+    TRAIN_DIR = os.path.join(DATASET_DIR, 'train2017')
+    VAL_DIR = os.path.join(DATASET_DIR, 'val2017')
+    ANNOTATION_DIR = os.path.join(DATASET_DIR, 'annotations')
+
+    CACHE_DIR = os.path.join(DATASET_DIR, 'cache')
+    CACHE_TRAIN_RECORDS = os.path.join(CACHE_DIR, 'records_train.pkl')
+    CACHE_VAL_RECORDS = os.path.join(CACHE_DIR, 'records_val.pkl')
+    CACHE_TRAIN_TRANSFER = os.path.join(
+        CACHE_DIR, 'train_transferred_dataset.pkl')
+    CACHE_VAL_TRANSFER = os.path.join(CACHE_DIR, 'val_transferred_dataset.pkl')
+
 
 FILES = [
-    ['train2017.zip', config.paths.TRAIN_DIR],
-    ['val2017.zip', config.paths.VAL_DIR],
-    ['annotations_trainval2017.zip', config.paths.ANNOTATION_DIR]
+    ['train2017.zip', PATHS.TRAIN_DIR],
+    ['val2017.zip', PATHS.VAL_DIR],
+    ['annotations_trainval2017.zip', PATHS.ANNOTATION_DIR]
 ]
 
 
 # Extract the dataset
-
-def extract_files():
+def extract_files(path):
     for zip_file, file in FILES:
         if os.path.exists(file):
             print('{} already unpacked'.format(zip_file))
         else:
-            extract(zip_file, DOWNLOAD_DIR)
+            extract(zip_file, path)
 
 
 def _load_records(train=True):
@@ -42,7 +52,7 @@ def _load_records(train=True):
         filename = "captions_val2017.json"
 
     # Load the data-file
-    path = os.path.join(config.paths.DATASET_DIR, "annotations", filename)
+    path = os.path.join(PATHS.ANNOTATION_DIR, filename)
     with open(path, "r", encoding="utf-8") as file:
         data_raw = json.load(file)
 
@@ -64,7 +74,7 @@ def _load_records(train=True):
 
     for ann in annotations:
         image_id = ann['image_id']
-        caption = '<start>' + ann['caption'] + '<end>'
+        caption = '<start> ' + ann['caption'] + ' <end>'
 
         record = records[image_id]
         record['captions'].append(caption)
@@ -83,11 +93,10 @@ def load_records(train=True):
     :param train: When True loads the training data, else the cross-validation data
     """
     if train:
-        cache_filename = "records_train.pkl"
+        cache_path = PATHS.CACHE_TRAIN_RECORDS
     else:
-        cache_filename = "records_val.pkl"
+        cache_path = PATHS.CACHE_VAL_RECORDS
 
-    cache_path = os.path.join(DOWNLOAD_DIR, cache_filename)
     records = cache(cache_path=cache_path,
                     fn=_load_records,
                     train=train)
@@ -97,19 +106,27 @@ def load_records(train=True):
 
 class COCODataset:
     def __init__(self, batch_size=16, train_model='mobilenetv2'):
-        train_ids, train_filenames, train_captions = load_records(train=True)
-        val_ids, val_filenames, val_captions = load_records(train=False)
+        _, self.train_filenames, self.train_captions = load_records()
+        _, self.val_filenames, self.val_captions = load_records(False)
 
         if train_model == 'mobilenetv2':
-            preprocess_fn = self.load_image_mobilenet
+            load_fn = self.load_image_mobilenet
 
-        self.train_image_dataset = tf.data.Dataset.from_tensor_slices(train_filenames). \
-            map(preprocess_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE). \
-            batch(batch_size)
+        self.train_image_dataset = tf.data.Dataset.from_tensor_slices(
+            list(self.train_filenames)
+        )
+        self.train_image_dataset = self.train_image_dataset.map(
+            self.load_image_mobilenet,
+            num_parallel_calls=tf.data.experimental.AUTOTUNE
+        ).batch(batch_size)
 
-        self.val_image_dataset = tf.data.Dataset.from_tensor_slices(val_filenames). \
-            map(preprocess_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE). \
-            batch(batch_size)
+        self.val_image_dataset = tf.data.Dataset.from_tensor_slices(
+            list(self.val_filenames)
+        )
+        self.val_image_dataset = self.val_image_dataset.map(
+            self.load_image_mobilenet,
+            num_parallel_calls=tf.data.experimental.AUTOTUNE
+        ).batch(batch_size)
 
     @staticmethod
     def load_image_mobilenet(path):
@@ -123,7 +140,6 @@ class COCODataset:
         img = tf.image.resize(img, (224, 224))
         img = tf.keras.applications.mobilenet_v2.preprocess_input(img)
         return img, path
-
 
     def dataset(self, train=True):
         if train:

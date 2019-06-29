@@ -1,10 +1,7 @@
-from config import Config
-
 import pickle
 import os
 import sys
 import numpy as np
-import bcolz
 
 
 def print_list(list):
@@ -94,42 +91,3 @@ def cache(cache_path, fn, *args, **kwargs):
         print("- Data saved to cache-file: " + cache_path)
 
     return obj
-
-
-def create_dataset(transfer_values, captions, config, train=True):
-    """
-    Creates a list of length = total number of captions where every list item
-    is a list of size 2 -> [corresponding filepath path, caption]
-
-    :param transfer_values: List of transfer-values for images
-    :param captions: List of list of captions (tokenize) for each filename
-    :param config: Instance of Config class
-    :param train:
-            True if transfer-values and captions are of training dataset
-            False if transfer-values and captions are of cross-validation dataset
-    """
-    assert len(captions) == len(transfer_values)
-    assert isinstance(config, Config)
-
-    num_captions = len(captions)
-    num_captions_list = [len(caption) for caption in captions]
-    total_captions = np.sum(num_captions_list)
-
-    dataset = np.zeros((total_captions, 2), dtype=np.int64)
-    if train:
-        dataset = bcolz.carray(dataset, rootdir=config.paths.BCOLZ_TRAIN_DATASET, mode='w')
-    else:
-        dataset = bcolz.carray(dataset, rootdir=config.paths.BCOLZ_VAL_DATASET, mode='w')
-
-    row_idx = 0  # Temporary variable to keep track of each row in the dataset
-    for i in range(num_captions):
-        for x in range(num_captions_list[i]):
-            dataset[row_idx] = [i, x]
-            row_idx += 1
-
-    if train:
-        print(f'Train Dataset created of shape : {dataset.shape}')
-    else:
-        print(f'Cross-validation Dataset created of shape : {dataset.shape}')
-
-    return dataset

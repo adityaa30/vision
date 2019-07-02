@@ -1,6 +1,5 @@
 import tensorflow as tf
 import pandas as pd
-from config import Config
 
 
 class TokenizerWrapper(tf.keras.preprocessing.text.Tokenizer):
@@ -9,12 +8,15 @@ class TokenizerWrapper(tf.keras.preprocessing.text.Tokenizer):
     END = '<end>'
     PAD = '<pad>'
 
-    def __init__(self, texts, top=10000):
+    def __init__(self, texts, num_words=10000):
         """
         :param texts: lists of strings in the data-set
         """
-        super().__init__(self, num_words=top, oov_token=self.UNK,
-                         filters='!"#$%&()*+.,-/:;=?@[\]^_`{|}~ ')
+        tf.keras.preprocessing.text.Tokenizer.__init__(
+            self, num_words=num_words,
+            oov_token="<unk>",
+            filters='!"#$%&()*+.,-/:;=?@[\]^_`{|}~ '
+        )
 
         self.fit_on_texts(texts)
         self.word_index[self.PAD] = 0
@@ -35,3 +37,5 @@ class TokenizerWrapper(tf.keras.preprocessing.text.Tokenizer):
             seqs, padding='post')
 
         max_length = self.calc_max_length(pad_seqs)
+
+        return pad_seqs, max_length

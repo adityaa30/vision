@@ -1,11 +1,11 @@
 import os
+import random
 import json
 import tensorflow as tf
 import numpy as np
 
-from sklearn.utils import shuffle
-
 from vision.extract import extract
+from vision.models.tokenizer import TokenizerWrapper
 from vision.utils.utils import cache
 
 
@@ -19,9 +19,10 @@ class PATHS:
     CACHE_DIR = os.path.join(DATASET_DIR, 'cache')
     CACHE_TRAIN_RECORDS = os.path.join(CACHE_DIR, 'records_train.pkl')
     CACHE_VAL_RECORDS = os.path.join(CACHE_DIR, 'records_val.pkl')
-    CACHE_TRAIN_TRANSFER = os.path.join(
-        CACHE_DIR, 'train_transferred_dataset.pkl')
-    CACHE_VAL_TRANSFER = os.path.join(CACHE_DIR, 'val_transferred_dataset.pkl')
+
+    TRANSFER_DIR = os.path.join(DATASET_DIR, 'transfer_vals')
+    TRAIN_TRANSFER_DIR = os.path.join(TRANSFER_DIR, 'train')
+    VAL_TRANSFER_DIR = os.path.join(TRANSFER_DIR, 'val')
 
 
 FILES = [
@@ -63,9 +64,10 @@ def _load_records(train=True):
     # lookup-key is the image-id.
     records = dict()
 
+    parent_dir = PATHS.TRAIN_DIR if train else PATHS.VAL_DIR
     for image in images:
         image_id = image['id']
-        filename = image['file_name']
+        filename = os.path.join(parent_dir, )
 
         record = dict()
         record['filename'] = filename
@@ -105,28 +107,76 @@ def load_records(train=True):
 
 
 class COCODataset:
-    def __init__(self, batch_size=16, train_model='mobilenetv2'):
+    def __init__(self, batch_size=48, train_model='mobilenetv2'):
         _, self.train_filenames, self.train_captions = load_records()
         _, self.val_filenames, self.val_captions = load_records(False)
+        del _
+
+        self.batch_size = batch_size
 
         if train_model == 'mobilenetv2':
             load_fn = self.load_image_mobilenet
 
-        self.train_image_dataset = tf.data.Dataset.from_tensor_slices(
-            list(self.train_filenames)
-        )
-        self.train_image_dataset = self.train_image_dataset.map(
-            self.load_image_mobilenet,
-            num_parallel_calls=tf.data.experimental.AUTOTUNE
+        self.transfer_train_dataset = tf.data.Dataset.from_tensor_slices(list(self.train_filenames))
+        self.transfer_train_dataset = self.transfer_train_dataset.map(
+            load_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE
         ).batch(batch_size)
 
-        self.val_image_dataset = tf.data.Dataset.from_tensor_slices(
-            list(self.val_filenames)
-        )
-        self.val_image_dataset = self.val_image_dataset.map(
-            self.load_image_mobilenet,
-            num_parallel_calls=tf.data.experimental.AUTOTUNE
+        self.transfer_val_dataset = tf.data.Dataset.from_tensor_slices(list(self.val_filenames))
+        self.transfer_val_dataset = self.transfer_val_dataset.map(
+            load_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE
         ).batch(batch_size)
+
+        # Create a Tokenizer
+        self.tokenizer = TokenizerWrapper(self.get_texts())
+
+        # Create a list of filenames each mapped with its corresponding caption
+        _train_filenames, _train_captions = [], []
+        for i, captions in enumerate(self.train_captions, start=0):
+            # get the path of train transfer features
+            train_path = os.path.join(PATHS.TRAIN_TRANSFER_DIR, os.path.basename(self.train_filenames[i])) + '.npy'
+            for cap in captions:
+                _train_filenames.append(train_path)
+                _train_captions.append(cap)
+        _train_captions = self.tokenizer.texts_to_sequences(_train_captions)
+        _train_captions = tf.keras.preprocessing.sequence.pad_sequences(_train_captions, padding='post')
+        max_len = max([len(cap) for cap in _train_captions])
+        self.train_dataset = tf.data.Dataset.from_tensor_slices((_train_filenames, _train_captions)).map(
+            lambda item1, item2: tf.numpy_function(self.map_func, [item1, item2], [tf.float32, tf.int32]),
+            num_parallel_calls=tf.data.experimental.AUTOTUNE) \
+            .shuffle(1000, reshuffle_each_iteration=True) \
+            .batch(self.batch_size) \
+            .prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+        # Free the memory
+        del _train_filenames
+        del _train_captions
+
+        _val_filenames, _val_captions = [], []
+        for i, captions in enumerate(self.val_captions, start=0):
+            # get the path of train transfer features
+            val_path = os.path.join(PATHS.VAL_TRANSFER_DIR, os.path.basename(self.val_filenames[i])) + '.npy'
+            for cap in captions:
+                _val_filenames.append(val_path)
+                _val_captions.append(cap)
+        _val_captions = self.tokenizer.texts_to_sequences(_val_captions)
+        _val_captions = tf.keras.preprocessing.sequence.pad_sequences(_val_captions, padding='post')
+        max_len = max([len(cap) for cap in _val_captions])
+        self.val_dataset = tf.data.Dataset.from_tensor_slices((_val_filenames, _val_captions)) \
+            .map(lambda item1, item2: tf.numpy_function(self.map_func, [item1, item2], [tf.float32, tf.int32]),
+                 num_parallel_calls=tf.data.experimental.AUTOTUNE) \
+            .shuffle(1000, reshuffle_each_iteration=True) \
+            .batch(self.batch_size) \
+            .prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+        # Free the memory
+        del _val_filenames
+        del _val_captions
+
+    @staticmethod
+    def map_func(img_path, cap):
+        # Load the numpy files
+        # img_name & cap is of type: tf.string
+        img_tensor = np.load(img_path)
+        return img_tensor, cap
 
     @staticmethod
     def load_image_mobilenet(path):
@@ -134,15 +184,28 @@ class COCODataset:
         Load the image from the given file-path and resize it
         to the size compatible with MobileNetV2
         """
-
         img = tf.io.read_file(path)
         img = tf.image.decode_jpeg(img, channels=3)
         img = tf.image.resize(img, (224, 224))
         img = tf.keras.applications.mobilenet_v2.preprocess_input(img)
         return img, path
 
-    def dataset(self, train=True):
+    def get_dataset(self, train=True):
         if train:
-            return self.train_image_dataset
+            return self.transfer_train_dataset
         else:
-            return self.val_image_dataset
+            return self.transfer_val_dataset
+
+    def get_texts(self):
+        texts = []
+        _captions = self.train_captions + self.val_captions
+        for caps in _captions:
+            for cap in caps:
+                texts.append(cap)
+
+        return texts
+
+    @staticmethod
+    def caption_to_target(caption):
+        # TODO: Convert caption -> target
+        print(caption)

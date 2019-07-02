@@ -1,161 +1,102 @@
-import keras
-from keras import backend as K
-
-import math
+import time
 import numpy as np
-import itertools
+import tensorflow as tf
 
+from vision.models.models import *
+from vision.coco import COCODataset
 
-class TrainModel:
-    def __init__(self, transfer_model, glove, state_size):
-        self.transfer_model = transfer_model
-        self.glove = glove
-        self.state_size = state_size
+def loss_function(real, pred):
+    mask = tf.math.logical_not(tf.math.equal(real, 0))
+    loss_obj = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True, reduction='none')
+    loss_ = loss_obj(real, pred)
 
-        self.transfer_values_input = keras.layers.Input(shape=(self.transfer_model.image_process.transfer_values_size,))
+    mask = tf.cast(mask, dtype=loss_.dtype)
+    loss_ *= mask
 
-        self.decoder_transfer_map = keras.layers.Dense(
-            units=self.state_size,
-            activation='tanh',
-            name='decoder_transfer_map'
-        )
+    return tf.reduce_mean(loss_)
 
-        self.decoder_input = keras.layers.Input(shape=(None,), name='decoder_input')
+@tf.function
+def train_step(image_tensor, target, encoder, decoder, dataset, optimizer):
+    loss = 0
 
-        with K.name_scope('embedding'):
-            self.decoder_embedding = keras.layers.Embedding(
-                input_dim=self.glove.num_words,
-                output_dim=self.glove.embedding_dimension,
-                weights=[self.glove.embedding_matrix],
-                trainable=False,
-                name='decoder_embedding'
-            )
+    # initializing the hidden state for each batch
+    # because the captions are not related from image to image
+    hidden = decoder.reset_state(batch_size=target.shape[0])
 
-        with K.name_scope('gru1'):
-            self.decoder_gru1 = keras.layers.CuDNNGRU(
-                units=self.state_size,
-                return_sequences=True,
-                name='decoder_gru1'
-            )
+    dec_input = tf.expand_dims([dataset.tokenizer.word_index['<start>']] * dataset.batch_size, 1)
 
-        with K.name_scope('gru2'):
-            self.decoder_gru2 = keras.layers.CuDNNGRU(
-                units=self.state_size,
-                return_sequences=True,
-                name='decoder_gru2'
-            )
+    with tf.GradientTape() as tape:
+        features = encoder(image_tensor)
 
-        with K.name_scope('gru2'):
-            self.decoder_gru3 = keras.layers.CuDNNGRU(
-                units=self.state_size,
-                return_sequences=True,
-                name='decoder_gru3'
-            )
+        for i in range(1, target.shape[1]):
+            # passing the features through the decoder
+            predictions, hidden, _ = decoder(dec_input, features, hidden)
 
-        with K.name_scope('fc'):
-            self.decoder_dense = keras.layers.Dense(
-                units=self.glove.num_words,
-                activation='linear',
-                name='decoder_output'
-            )
+            loss += loss_function(target[:, i], predictions)
 
-        self.decoder_output = self.connect_decoder(transfer_values=self.transfer_values_input)
+            # using teacher forcing
+            dec_input = tf.expand_dims(target[:, i], 1)
 
-        self.decoder_model = keras.models.Model(
-            inputs=[self.transfer_values_input, self.decoder_input],
-            outputs=[self.decoder_output]
-        )
+    total_loss = (loss / int(target.shape[1]))
+    trainable_variables = encoder.trainable_variables + decoder.trainable_variables
+    gradients = tape.gradient(loss, trainable_variables)
+    optimizer.apply_gradients(zip(gradients, trainable_variables))
+    return loss, total_loss
 
-    def connect_decoder(self, transfer_values):
-        initial_state = self.decoder_transfer_map(transfer_values)
+def train():
+    dataset = COCODataset()
 
-        net = self.decoder_input
+    embedding_dim = 256
+    units = 512
+    vocab_size = len(dataset.tokenizer.word_index) + 1
+    num_steps = len(dataset.train_captions) // dataset.batch_size
+    # Shape of the vector extracted from MobileNet is (49, 2048)
+    # These two variables represent that vector shape
+    features_shape = 2048
+    attention_features_shape = 49
 
-        net = self.decoder_embedding(net)
+    encoder = CNNEncoder(embedding_dim)
+    decoder = RNNDecoder(embedding_dim, units, vocab_size)
 
-        net = self.decoder_gru1(net, initial_state=initial_state)
-        net = self.decoder_gru2(net, initial_state=initial_state)
-        net = self.decoder_gru3(net, initial_state=initial_state)
+    optimizer = tf.keras.optimizers.Adam()
 
-        _decoder_output = self.decoder_dense(net)
+    # Checkpoints
+    checkpoint_path = "./checkpoints/train"
+    ckpt = tf.train.Checkpoint(
+        encoder=encoder,
+        decoder=decoder,
+        optimizer=optimizer
+    )
+    ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_path, max_to_keep=5)
 
-        return _decoder_output
+    start_epoch = 0
+    if ckpt_manager.latest_checkpoint:
+        start_epoch = int(ckpt_manager.latest_checkpoint.split('-')[-1])
 
+    # adding this in a separate cell because if you run the training cell
+    # many times, the loss_plot array will be reset
+    loss_plot = []
 
-class COCOSequenceGenerator(keras.utils.Sequence):
+    EPOCHS = 20
 
-    def __init__(self, model, config, train=True):
-        """
-        Constructor to initialize the values of the dataset
+    print('Starting training..')
+    for epoch in range(start_epoch, EPOCHS):
+        start = time.time()
+        total_loss = 0
 
-        :param model: Model class from models/models.py to fetch dataset
-        :param config: Instance of Config class
-        :param train:
-                True if dataset is used for Training data
-                False if dataset is used for Cross-validation data
-        """
-        self.model = model
-        self.batch_size = config.TRAIN_BATCH_SIZE
-        self.config = config
+        for (batch, (img_tensor, target)) in enumerate(dataset.train_dataset):
+            batch_loss, t_loss = train_step(img_tensor, target, encoder, decoder, dataset, optimizer)
+            total_loss += t_loss
 
-        if train:
-            self.dataset = self.model.train_dataset
-            self.transfer_values = self.model.transfer_values_train
-            self.captions = self.model.train_tokens
-        else:
-            self.dataset = self.model.val_dataset
-            self.transfer_values = self.model.transfer_values_val
-            self.captions = self.model.val_tokens
+            if batch % 10 == 0:
+                print('Epoch {} Batch {} Loss {:.4f}'.format(epoch + 1, batch, batch_loss.numpy() / int(target.shape[1])))
+        # storing the epoch end loss value to plot later
+        loss_plot.append(total_loss / num_steps)
 
-        # Shuffle the dataset
-        self.transfer_values_idx = None
-        self.captions_idx = None
-        self.shuffle_dataset()
+        if epoch % 2 == 0:
+            ckpt_manager.save()
 
-    def __getitem__(self, idx):
-        """
-        Gets batch at position index
-        """
-        batch_transfer_values_idx = np.array(
-            self.transfer_values_idx[idx * self.batch_size:(idx + 1) * self.batch_size])
+        print('Epoch {} Loss {:.6f}'.format(epoch + 1, total_loss / num_steps))
+        print('Time taken for 1 epoch {} sec\n'.format(time.time() - start))
 
-        batch_captions_idx = np.array(self.captions_idx[idx * self.batch_size:(idx + 1) * self.batch_size])
-
-        batch_transfer_values = np.array([])
-        batch_captions = np.array([])
-        for i, idx in enumerate(batch_transfer_values_idx, start=0):
-            batch_transfer_values = np.r_[batch_transfer_values, self.transfer_values[idx]]
-            batch_captions = np.r_[batch_captions, self.captions[idx][batch_captions_idx[i]]]
-
-        batch_captions = itertools.zip_longest(batch_captions, fillvalue=self.config.PADDING_FILL_VALUE)
-        batch_captions = list(zip(*batch_captions))
-
-        decoder_input_data = batch_captions[:, 0:-1]
-        decoder_output_data = batch_captions[:, 1:]
-
-        x_data = {
-            'decoder_input': decoder_input_data,
-            'transfer_values_input': batch_transfer_values
-        }
-
-        # Dict for the output-data.
-        y_data = {
-            'decoder_output': decoder_output_data
-        }
-
-        return x_data, y_data
-
-    def __len__(self):
-        """
-        :return: Number of batches in the Sequence
-        """
-        return math.ceil(len(self.transfer_values) / self.batch_size)
-
-    def on_epoch_end(self):
-        super().on_epoch_end()
-        self.shuffle_dataset()
-
-    def shuffle_dataset(self):
-        np.random.shuffle(self.dataset)
-        self.transfer_values_idx = self.dataset[:, 0]
-        self.captions_idx = self.dataset[:, 1]
+    np.save('loss_plot.npy', np.array(loss_plot))

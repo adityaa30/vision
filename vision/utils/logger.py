@@ -4,4 +4,4 @@ class Logger:
     
     # verbose
     def v(self, msg):
-        print(f'{tag}: {msg}')
+        print(f'{self.tag}: {msg}')

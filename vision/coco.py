@@ -6,7 +6,7 @@ import numpy as np
 
 from vision.extract import extract
 from vision.models.tokenizer import TokenizerWrapper
-from vision.utils.utils import cache
+from vision.utils import cache
 
 
 class PATHS:
@@ -56,7 +56,7 @@ def _load_records(train=True):
     path = os.path.join(PATHS.ANNOTATION_DIR, filename)
     with open(path, "r", encoding="utf-8") as file:
         data_raw = json.load(file)
-
+  
     images = data_raw['images']
     annotations = data_raw['annotations']
 
@@ -161,12 +161,14 @@ class COCODataset:
         _val_captions = self.tokenizer.texts_to_sequences(_val_captions)
         _val_captions = tf.keras.preprocessing.sequence.pad_sequences(_val_captions, padding='post')
         max_len = max([len(cap) for cap in _val_captions])
+        
         self.val_dataset = tf.data.Dataset.from_tensor_slices((_val_filenames, _val_captions)) \
             .map(lambda item1, item2: tf.numpy_function(self.map_func, [item1, item2], [tf.float32, tf.int32]),
                  num_parallel_calls=tf.data.experimental.AUTOTUNE) \
             .shuffle(1000, reshuffle_each_iteration=True) \
             .batch(self.batch_size) \
             .prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+        
         # Free the memory
         del _val_filenames
         del _val_captions

@@ -1,12 +1,18 @@
 import os
 import pickle
+import logging
 from tqdm import tqdm
 
 import tensorflow as tf
 import numpy as np
 
 from vision.coco import COCODataset
-from vision.utils.logger import Logger
+
+K = tf.keras
+KL = tf.keras.layers
+KA = tf.keras.applications
+
+LOGGER = logging.getLogger(__name__)
 
 
 class MobileNetV2:
@@ -15,7 +21,8 @@ class MobileNetV2:
     VAL_PATH = os.path.join(SAVE_PATH, 'val')
 
     def __init__(self):
-        self._model = tf.keras.applications.mobilenet_v2.MobileNetV2(include_top=False, weights='imagenet')
+        self._model = KA.mobilenet_v2.MobileNetV2(
+            include_top=False, weights='imagenet')
 
         self.input_shape = (224, 224, 3)
         self.output_shape = (7, 7, 1280)
@@ -27,13 +34,11 @@ class MobileNetV2:
 
         self.dataset = COCODataset(train_model='mobilenetv2')
 
-        self.LOGGER = Logger('MobileNetV2')
-
     def save_path(self, train=True):
         return self.TRAIN_PATH if train else self.VAL_PATH
 
     def decode_transfer_vals(self, train=True):
-        self.LOGGER.v('Starting to decode transfer values...')
+        LOGGER.log('Starting to decode transfer values...')
 
         i = 0
         dataset = self.dataset.get_dataset(train)
@@ -55,16 +60,16 @@ class MobileNetV2:
                 )
                 np.save(path_of_feature, bf.numpy())
 
-        self.LOGGER.v('Finished decoding transfer values')
+        LOGGER.log('Finished decoding transfer values')
 
 
 # Ref: https://www.tensorflow.org/beta/tutorials/text/image_captioning
 class BahdanauAttention(tf.keras.Model):
     def __init__(self, units):
         super(BahdanauAttention, self).__init__()
-        self.W1 = tf.keras.layers.Dense(units)
-        self.W2 = tf.keras.layers.Dense(units)
-        self.V = tf.keras.layers.Dense(1)
+        self.W1 = KL.Dense(units)
+        self.W2 = KL.Dense(units)
+        self.V = KL.Dense(1)
 
     def call(self, features, hidden):
         # features(CNN_encoder output) shape == (batch_size, 64, embedding_dim)
@@ -93,7 +98,7 @@ class CNNEncoder(tf.keras.Model):
     def __init__(self, embedding_dim):
         super(CNNEncoder, self).__init__()
         # shape after fc == (batch_size, 64, embedding_dim)
-        self.fc = tf.keras.layers.Dense(embedding_dim)
+        self.fc = KL.Dense(embedding_dim)
 
     def call(self, x):
         x = self.fc(x)
@@ -106,13 +111,13 @@ class RNNDecoder(tf.keras.Model):
         super(RNNDecoder, self).__init__()
         self.units = units
 
-        self.embedding = tf.keras.layers.Embedding(vocab_size, embedding_dim)
-        self.gru = tf.keras.layers.GRU(self.units,
-                                       return_sequences=True,
-                                       return_state=True,
-                                       recurrent_initializer='glorot_uniform')
-        self.fc1 = tf.keras.layers.Dense(self.units)
-        self.fc2 = tf.keras.layers.Dense(vocab_size)
+        self.embedding = KL.Embedding(vocab_size, embedding_dim)
+        self.gru = KL.GRU(self.units,
+                          return_sequences=True,
+                          return_state=True,
+                          recurrent_initializer='glorot_uniform')
+        self.fc1 = KL.Dense(self.units)
+        self.fc2 = KL.Dense(vocab_size)
 
         self.attention = BahdanauAttention(self.units)
 
